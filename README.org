@@ -1,0 +1,94 @@
+#+TITLE:  Emacs JavaScript Align
+#+AUTHOR: John Hooks
+#+EMAIL:  john@bitmachina.com
+#+DATE:   <2016-09-07 Wed>
+
+** Purpose
+
+   Manage the indentation of JavaScript code in Emacs in a flexible
+   and easy to reason about way.
+
+** Installation
+
+   Add ~js-align.el~ to your ~load-path~, and then add the following
+   code to your Emacs configuration to replace the indentation function
+   of ~js.el~ with that if ~js-align.el~
+   
+   #+begin_src emacs-lisp :tangle no
+     (require 'js-align)
+     (advice-add #'js--proper-indentation :override #'js-align--proper-indentation)
+   #+end_src
+
+** The Code
+
+   I have written ~js-align~ in Org mode to make commenting and explaining
+   the code much easier. Have a look at the org file [[https://github.com/johnhooks/js-align/blob/master/js-align.org][here]].
+
+** Explaination
+
+   During my short time learning Emacs, every little configuration
+   tweek I have wanted to make was easily found with an internet search.
+   The world of Emacs is vast, typically someone else has already solved
+   any problem one is likely to encounter. Luckly, many people have
+   taken the time to write about their experience and share a solution.
+   This is my first attempt at such an effort.
+
+   I have coded JavaScript in Emacs for a few years and have come to
+   rely on the editor's assistance in many ways. It has handled
+   indentation as I would expect with little or no effort on my part
+   other than to hit ~<TAB>~. Though over the last few months I have
+   begun to play with functional reactive programming. Many libraries
+   heavily utilize the new ES6 arrow function and its explicit reaturn
+   value. Attempting to indent an arrow function as done with an 
+   anonymous function currently produces odd results.
+
+   #+BEGIN_SRC javascript :tangle no
+     let result = source.map(item =>
+                             item.map(square)
+                             .filter(oddp)
+                            )
+   #+END_SRC
+
+   I expect this
+
+   #+BEGIN_SRC javascript :tangle no
+     let result = source.map(item =>
+       item.map(square)
+         .filter(oddp)
+     )
+   #+END_SRC
+
+   The best solution I could find is what I consider a semi solution.
+   Use curly braces around the body and include a ~return~ keyword.
+
+   #+BEGIN_SRC javascript :tangle no
+     let result = source.map(item => {
+       return item.map(square)
+         .filter(oddp)
+     })
+   #+END_SRC
+
+   This works, though at a loss of elegance. Which becomes even more
+   painful to bear when the returned expression has a heirarchical
+   structure, as in the following example which uses a virtual-dom
+   library:
+
+   #+BEGIN_SRC javascript :tangle no
+     let view = source.map(item => {
+       return div([
+         button({on: {click: action}}, 'Toggle'),
+         p(item.state)
+       ])
+     })
+   #+END_SRC
+
+   After diving into ~js.el~, I discovered multi line arrow functions
+   are indented as they are because they are not considered by
+   ~js--proper-indentation~, the function that handles JavaScript
+   indentation. After several attempts to use ~add-advice~ to add the
+   necessary functionality without rewriting the original code, I
+   realized there where so many interconnected conditions the advice
+   had to be almost as long and the original code. So I have choosen
+   to rewrite the functions and replace them using the ~:override~
+   argument to ~add-advice~. I consider this a short term measure, I
+   am sure there is a better solution.
