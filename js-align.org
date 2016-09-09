@@ -14,7 +14,7 @@ attempt to improve Emacs JavaScript indentation and give a thorough
 explaination of my solution.
 
 #+begin_src emacs-lisp :tangle yes
-  ;;; js-align.el --- Manage the indentation of JavaScript.
+  ;;; js-align.el --- JavaScript Indentation
 #+end_src
 
 ** License
@@ -32,7 +32,9 @@ copyright should be included, though what could it hurt?
   ;;         John Hooks <john@bitmachina.com>
 
   ;; Maintainer: John Hooks <john@bitmachina.com>
-  ;; Version: 0.1
+  ;; URL: https://github.com/johnhooks/js-align
+  ;; Version: 0.1.1
+
   ;; Keywords: languages, javascript
 
   ;; This file is part of js-align
@@ -87,8 +89,14 @@ Used by ~js-align--terminal-arrow-p~
 (defvar js-align--empty-re "\\s-*\\($\\|/[/*]\\|//\\)")
 #+end_src
 
-Needs some work. Will currently match a multi line comment that may
-not continue until the EOL.
+Matches a only combinations of whitespace and comments. Intended
+use is to ensure point is before the last valid token before the
+EOL.
+
+**** Notes
+Any function using ~js-align--empty-re~ will need to handle the
+exception of a multi line comment that is used on a single line
+with content between it and the EOL.
 
 *** =js-align--indent-operator-re=
 Used by ~js-align--looking-at-indent-operator-p~
@@ -101,20 +109,29 @@ Used by ~js-align--looking-at-indent-operator-p~
             (js--regexp-opt-symbol '("in" "instanceof"))))
 #+end_src
 
-Will match:
+Should match:
 #+begin_example
   - + * / % < > & ^ | ? : . = !=
 #+end_example
 
-Because they are not excluded, will also match:
+Because they are not excluded, should also match:
 #+begin_example
-  <= >= == === !==
+  == === !== += -= *= /= %= &= ^= |=
+  <= >= && || << >> >>> <<= >>= >>>=    
 #+end_example
 
-Will not match:
+Should not match:
 #+begin_example
-  -- ++ => /*
+  ! ~ -- ++ => /* */ //
 #+end_example
+
+**** Todo
+Need to get the new exponentiation operators (~**~ ~**=~) to match.
+A test on these operators fail because ~js-align--indent-operator-re~
+should fail on a comment which also uses an ~*~ in either first or
+second character position. Perhaps remove the ~*~ from the group of
+characters to be excluded in second character position, and create
+and exception in ~js-align--continued-operator-p~ to handle comments.
 
 ** Functions
 *** =js-align--ternary-search=
@@ -361,6 +378,9 @@ variables from ~js.el~
 I hope you have found this helpful.
 
 #+begin_src emacs-lisp :tangle yes
+  ;; Add the addvice to `js-mode' to replace the indentation function
+  (advice-add #'js--proper-indentation :override #'js-align--proper-indentation)
+
   (provide 'js-align)
   ;;; js-align.el ends here
 #+end_src

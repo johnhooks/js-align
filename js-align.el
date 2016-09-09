@@ -1,5 +1,5 @@
 
-;;; js-align.el --- Manage the indentation of JavaScript.
+;;; js-align.el --- JavaScript Indentation
 
 ;; Copyright (C) 2016 John Hooks
 ;; Copyright (C) 2008-2016 Free Software Foundation, Inc.
@@ -9,7 +9,9 @@
 ;;         John Hooks <john@bitmachina.com>
 
 ;; Maintainer: John Hooks <john@bitmachina.com>
-;; Version: 0.1
+;; URL: https://github.com/johnhooks/js-align
+;; Version: 0.1.1
+
 ;; Keywords: languages, javascript
 
 ;; This file is part of js-align
@@ -188,6 +190,9 @@ If JUMP skip over a matched ternary pair."
           ((js--continued-expression-p)
            (+ js-indent-level js-expr-indent-offset))
           (t 0))))
+
+;; Add the addvice to `js-mode' to replace the indentation function
+(advice-add #'js--proper-indentation :override #'js-align--proper-indentation)
 
 (provide 'js-align)
 ;;; js-align.el ends here
