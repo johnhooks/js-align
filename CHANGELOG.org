@@ -1,0 +1,37 @@
+#+TITLE:  CHANGELOG
+#+AUTHOR: John Hooks
+#+EMAIL:  john@bitmachina.com
+#+DATE:   <2016-09-16 Fri>
+#+STARTUP: indent
+#+STARTUP: hidestars
+
+** 0.1.2
+   <2016-09-16 Fri>
+   
+*** Added
+    1. ~js-align--backward-operator~
+
+       Simplifies the finding of a continued expression operator in the
+       lines above the current line in ~js--continued-expression-p~.
+
+*** Modified
+    1. ~js-align--ternary-search~
+
+       + no longer a recursive function
+       + returns the position of the matching ternary =?= if it exists, nil
+         otherwise.
+
+    2. ~js-align--looking-at-indent-operator-p~
+
+       Uses ~js-align--ternary-search~ directly now that it is not recursive.
+
+    3. ~js-align--continued-expression-p~
+
+       Uses ~js-align--backward-operator~ to find the previous operator
+       before point if one exists. Corrects the failure of test
+       ~continued-expression-above-comment~
+
+*** Removed
+    1. ~js-align--ternary-colon-p~
+
+       Replaced by the functionality of ~js-align--ternary-search~

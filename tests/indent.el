@@ -58,11 +58,29 @@
   "let foo = 5 +
   |  4")
 
+(js-align-deftest-indent continued-expression-above-comment
+  "let foo = 5 + // 9
+  |  4")
+
 (js-align-deftest-indent continued-expression-below
   "let foo = 5
   |  + 4")
 
-(js-align-deftest-indent multiline-strings-noop
+(js-align-deftest-indent continued-expression-below-comment
+  "let foo = 5 // 9
+  |  + 4")
+
+(js-align-deftest-indent ternary-expr-basic
+  "let foo = (true)
+  |  ? bar
+  |  : baz")
+
+(js-align-deftest-indent ternary-expr-object-literal
+  "let foo = (true)
+  |  ? {a: 2, b: b}
+  |  : {a: a, b: 3}")
+
+(js-align-deftest-indent multi-line-strings-noop
   "`multiline strings
   |        contents
   |     are kept

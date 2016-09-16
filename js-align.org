@@ -33,7 +33,7 @@ copyright should be included, though what could it hurt?
 
   ;; Maintainer: John Hooks <john@bitmachina.com>
   ;; URL: https://github.com/johnhooks/js-align
-  ;; Version: 0.1.1
+  ;; Version: 0.1.2
 
   ;; Keywords: languages, javascript
 
@@ -71,13 +71,12 @@ copyright should be included, though what could it hurt?
 
 ** Require
 ~js-align.el~ requires variables and functions which are defined in
-~js.el~, and ~cl-lib~ is handy.
+~js.el~.
 
 #+begin_src emacs-lisp :tangle yes
   ;;; Code:
 
   (require 'js)
-  (require 'cl-lib)
 #+end_src
 
 ** Regular Expressions
@@ -117,7 +116,7 @@ Should match:
 Because they are not excluded, should also match:
 #+begin_example
   == === !== += -= *= /= %= &= ^= |=
-  <= >= && || << >> >>> <<= >>= >>>=    
+  <= >= && || << >> >>> <<= >>= >>>=
 #+end_example
 
 Should not match:
@@ -128,59 +127,98 @@ Should not match:
 **** Todo
 Need to get the new exponentiation operators (~**~ ~**=~) to match.
 A test on these operators fail because ~js-align--indent-operator-re~
-should fail on a comment which also uses an ~*~ in either first or
-second character position. Perhaps remove the ~*~ from the group of
-characters to be excluded in second character position, and create
+should fail on an opening multi line comment, which also uses a ~*~
+in the second character position. Perhaps remove the ~*~ from the group
+of characters to be excluded in second character position, and create
 and exception in ~js-align--continued-operator-p~ to handle comments.
+*** =js-align--assignment-operator-re=
+
+#+NAME: js-align--assignment-operator-re
+#+begin_src emacs-lisp :tangle yes
+  (defvar js--align-assignment-re
+    "\\([-+*/%&^|]\\|[*<>]\\{2\\}>?\\)?=$")
+#+end_src
+
+*** =js-align--no-indent-operator-re=
+Used by ~js-align--looking-at-indent-operator-p~
+
+#+NAME: js-align--no-indent-operator-re
+#+begin_src emacs-lisp :tangle yes
+  (defvar js-align--no-indent-operator-re
+    "[-+*][-+/]\\|[/*]/")
+#+end_src
 
 ** Functions
+*** =js-align--backward-operator=
+Used by ~js-align--continued-expression-p~
+
+#+NAME: js-align--backward-operator
+#+begin_src emacs-lisp :tangle yes
+  (defun js-align--backward-operator ()
+    "Move point to the beginning of the previous token if an operator.
+  Return non-nil if success."
+    (let ((beginning (point)))
+      (forward-comment most-negative-fixnum)
+      (when (not (eq (point) (point-min)))
+        (if (eq (char-syntax (char-before)) 46)
+            (progn (skip-syntax-backward ".")
+                   t)
+          (progn (goto-char beginning)
+                 nil)))))
+#+end_src
+
 *** =js-align--ternary-search=
-Used by ~js-align--ternary-colon~
+Used by ~js-align--ternary-search-p~
 
 #+NAME: js-align--ternary-search
 #+begin_src emacs-lisp :tangle yes
-  (defun js-align--ternary-search (&optional jump)
-    "Search backward for the context of a colon.
-  If JUMP skip over a matched ternary pair."
-    (js--re-search-backward "[?:{}]\\|\\_<case\\_<" nil t)
-    (cond ((eq (char-after) ?})
-           (forward-char)
-           (backward-sexp)
-           (js-align--ternary-search))
-          ((eq (char-after) ?:)
-           (js-align--ternary-search t))
-          ((eq (char-after) ??)
-           (if jump
-               (js-align--ternary-search)
-             t))
-          (t 'nil)))
+  (defun js-align--ternary-search ()
+    "Search backwards for the matched question mark of a ternary colon.
+  Skips over any subexpression ternary pairs. Returns the position of
+  the question mark operator or nil if not a ternary colon."
+    (save-excursion
+      (let (pos
+            jump
+            (looking t))
+        (while looking
+          (js--re-search-backward "[]}){,?:]\\|\\<case\\>\\|\\<default\\>" nil t)
+          (cond ((memq (char-after) '(?\] ?\} ?\)))
+                 (forward-char)
+                 (backward-sexp))
+                ((eq (char-after) ?:)
+                 (setq jump t))
+                ((eq (char-after) ??)
+                 (if jump
+                     (setq jump nil) ; found subexpression '?'
+                   (setq pos (point) looking nil))) ; found it
+                (t
+                 (setq looking nil))))
+        pos)))
 #+end_src
 
-When searching for the context of colon, it is necessary to jump
-over any curly brase pairs, unless a single opening brace is reached.
-If a another colon is found while matching, check if it part of 
-another ternary expression, if so jump over it.
+When searching for the context of colon, possible usages include
+conditional expressions, keys in object literals, and the termination
+of switch case values and the ~default~ keyword.
 
-*** =js-align--ternary-colon-p=
-Used by ~js-align--continued-expression-p~
-
-#+NAME: js-align--ternary-colon-p
-#+begin_src emacs-lisp :tangle yes
-  (defun js-align--ternary-colon-p ()
-      "Return non-nil if the colon at point is in a ternary expression"
-      (message "working")
-      (save-excursion
-        (js-align--ternary-search)))
-#+end_src
-
-Something is going going wrong in this expression, some how the
-third line is not being considered a continued expression.
-
-#+begin_src javascript :tangle no
-  let foo = (true)
-    ? function () { /* */ }
-  : function () { /* */ }
-#+end_src
+**** Strategy
+***** Object Literals
+To eliminate the match of a colon in a object literal, search backwards
+for a comma, the usage of which is invalid in a conditional expresssion.
+Also an opening curly brace would indicate the beginning of an object
+literal, this necessitates jumping backward over any pairs of square
+braces, curly braces, or parentheses found before an opening curly
+brace or comma. If this step is not performed a false failure could
+happen in an array literal, object literal, function argument list or
+function body.
+***** Switch Statements
+If a match to the words ~case~ or ~default~ are found, obviously the
+usage of the colon is related to a switch statement.
+***** Nested Conditional Expressions
+It is possible to nest conditional expressions, so if one is found
+within the current search it must be jumped over. When another colon
+is found, the JUMP argument is switched to a non-nil value in the next
+recursive iteration of ~js-align--ternary-search~. If the matching
+ternary token ~?~ is found and JUMP is true, the search continues.
 
 *** =js-align--terminal-arrow-p=
 Used by ~js-align--proper-indentation~
@@ -208,9 +246,9 @@ Used by ~js-align--continued-expression-p~
     "Return non-nil if point is on a JavaScript operator requiring indentation."
     (save-match-data
       (and (looking-at js-align--indent-operator-re)
-           ;; exclude a colon if used outside a ternary expressions
+           ;; fail on a colon if used outside a ternary expression
            (or (not (eq (char-after) ?:))
-               (js-align--ternary-colon-p))
+               (js-align--ternary-search))
            ;; looking back to catch ++ -- /* */ =>
            (or (not (memq (char-before) '(?- ?+ ?* ?/ ?=)))
                (save-excursion
@@ -229,7 +267,7 @@ Used by ~js-align--continued-expression-p~
 
 There are exceptions to ~js-align--indent-operator-re~ which must be
 accounted for.
-+ The use of a ~:~ outside of a ternary expression should not be 
++ The use of a ~:~ outside of a ternary expression should not be
   considered a continued expression.
 + It is possible to be ~looking-at~ from the middle of an operator
   token which should not be matched. Examining the character before point
@@ -237,9 +275,9 @@ accounted for.
   character back.
 + Generator method definitions use the ~*~ character which are not a
   continued expression.
-  
+
   *Example:*
-  
+
   #+begin_src javascript :tangle no
     let obj = {
       ,* generatorMethod() {
@@ -266,12 +304,8 @@ Used by ~js-align--proper-indentation~
                 (not (memq (char-before) '(?, ?\[ ?\()))))
         ;; the current line did not tigger a continued expression though
         ;; must look above in case the last expression was
-        (and (js--re-search-backward "\n" nil t)
-             (progn
-               (skip-chars-backward " \t")
-               (or (bobp) (backward-char))
-               (and (> (point) (point-min))
-                    (js-align--looking-at-indent-operator-p)))))))
+        (and (js-align--backward-operator)
+             (js-align--looking-at-indent-operator-p)))))
 #+end_src
 
 - If ~js-align--looking-at-indent-operator-p~ returns true, insure the
@@ -279,16 +313,129 @@ Used by ~js-align--proper-indentation~
 - Else, examine the last character of the previous expression for an
   indentation operator token.
 
+**** Issues
+The arrow needs to no be considered a continued expression when
+used inside an argument list of  of a function call, otherwise it
+is indented twice. Though in an object literal, array literal, or
+in the assignment of an arrow function to a variable.
+
+Pehaps rather than not consider the arrow function a continued
+expression, add an exception to the rule of indenting blocks with
+anything after the opening punctuation.
+*** =js-align--arrow-indentation=
+
+#+NAME: js-align--arrow-indentation
+#+begin_src emacs-lisp :tangle yes
+  (defun js-align--arrow-indentation ()
+    "Return indentation of a multi line arrow function explicit return."
+    (save-excursion
+      (back-to-indentation)
+      (when (save-excursion
+              (and (not (eq (point-at-bol) (point-min)))
+                   (not (looking-at "[{]"))
+                   (js--re-search-backward "[[:graph:]]" nil t)
+                   (progn
+                     ;; necessary to `forward-char' in order to move off
+                     ;; the match to [:graph:]
+                     (or (eobp) (forward-char))
+                     ;; skip over syntax whitespace
+                     (skip-syntax-backward " ")
+                     ;; skip over syntax punctuation
+                     (skip-syntax-backward ".")
+                     ;; Looking at a fat arrow?
+                     (looking-at "=>"))))
+        ;; if looking at a fat arrow, move to the saved match location
+        (goto-char (match-beginning 0))
+        ;; return the indentation
+        (+ (current-indentation) js-indent-level))))
+#+end_src
+
+*** =js-align--backward-jump=
+Used by ~js-align--backward-peek~
+
+#+NAME: js-align--backward-jump
+#+begin_src emacs-lisp :tangle yes
+  (defun js-align--backward-jump (&optional start)
+    "Move backward one token, jumping over delimiter pairs.
+  Returns an alist of data representing the token. Optionally START at
+  a position other than point."
+    ;; alist keys include the following:
+    ;;   end  - the position of the last char of the token or the
+    ;;          position after the closing delimiter char
+    ;;   type - the type of token
+    ;;
+    ;; Should not have to worry about beginning a search from inside a
+    ;; string or comment because `js-align--proper-indentation' will
+    ;; handle this situation. Otherwise `backward-sexp' will possibly
+    ;; jump unmatched pairs of strings and delimiters.
+    (when start (goto-char start))
+    ;; move backwards skipping comments and whitespace
+    (forward-comment most-negative-fixnum)
+    (when (not (eq (point) (point-min)))
+      (let (type
+            (char (char-before))
+            (end (point)))
+        (cond ((eq (char-syntax char) 46) ; 46 punctuation character "."
+               (skip-syntax-backward ".")
+               (setq type 'operator))
+              ((or (eq (char-syntax char) 95)   ; 95 symbol constituent "_"
+                   (eq (char-syntax char) 119)) ; 119 word constituent "w"
+               (skip-syntax-backward "w_")
+               (let ((on (char-after)))
+                 (if (and (> on 47) (< on 58))  ; ansi number codes
+                     (setq type 'number)
+                   (setq type 'symbol))))
+              ((eq (char-syntax char) 41) ; 41 close delimiter character ")"
+               (backward-sexp)
+               (setq type 'close))
+              ((eq (char-syntax char) 40) ; 40 open delimiter character "("
+               (backward-char)
+               (setq type 'open))
+              ((eq (char-syntax char) 34) ; 34 string quote character "\""
+               (backward-sexp)
+               (setq type 'string)))
+        ;; Create alist of token data
+        `((end ,end) (type ,type)))))
+#+end_src
+
+Uses the syntax-table to parse tokens.
+
+- =32= whitespace character " "
+- =34= string quote character "\""
+- =40= open delimiter character "("
+- =41= close delimiter character ")"
+- =46= punctuation character "."
+- =60= comment starter "<"
+- =62= comment ender ">"
+- =95= symbol constituent "_"
+- =119= word constituent "w"
+
+*** =js-align--backward-peek=
+
+#+NAME: js-align--backward-peek
+#+begin_src emacs-lisp :tangle yes
+  (defun js-align--backward-peek ()
+    "Move backward one token. Returns an alist representing the token."
+    ;; Adds following keys to alist returned by `js-align--backward-jump'
+    ;; start - the position of the beginning of the token
+    ;;         may be redundant.
+    (save-excursion
+      (let ((data (js-align--backward-jump)))
+        (unless (null data)
+          (append data `((start ,(point))))))))
+#+end_src
+
 *** =js-align--proper-indentation=
 Used as ~:override~ advise to ~js--proper-indentation~
 
-User customization should remain the same by utilizing user defined 
+User customization should remain the same by utilizing user defined
 variables from ~js.el~
 - ~js-indent-level~
 - ~js-expr-indent-offset~
 - ~js-paren-indent-offset~
 - ~js-square-indent-offset~
 - ~js-curly-indent-offset~
+- ~js-switch-indent-offset~
 
 #+NAME: js-align--proper-indentation
 #+begin_src emacs-lisp :tangle yes
@@ -306,14 +453,14 @@ variables from ~js.el~
              ;; A single closing paren/bracket should be indented at the
              ;; same level as the opening statement. Same goes for
              ;; "case" and "default".
-             (let ((status '())
+             (let (
                    (same-indent-p (looking-at "[]})]"))
                    (switch-keyword-p (looking-at "default\\_>\\|case\\_>[^:]"))
                    (continued-expr-p (js-align--continued-expression-p)))
                (goto-char (nth 1 parse-status)) ;go to the opening char
                (if (or (looking-at "[({[]\\s-*\\(/[/*]\\|$\\)")
                        (js-align--terminal-arrow-p))
-                   (progn 
+                   (progn
                      ;; nothing following the opening paren/bracket
                      ;; except maybe a fat arrow
                      (skip-syntax-backward " ")
@@ -342,7 +489,7 @@ variables from ~js.el~
                        (if in-switch-p
                            (+ indent js-switch-indent-offset)
                          indent)))
-                 
+
                  ;; If there is something following the opening
                  ;; paren/bracket, everything else should be indented at
                  ;; the same level
@@ -351,8 +498,15 @@ variables from ~js.el~
                    (skip-chars-forward " \t"))
                  (current-column))))
 
-            ((js--continued-expression-p)
-             (+ js-indent-level js-expr-indent-offset))
+            ;; ** Issue **
+            ;; when the arrow operator is inside a set of square braces,
+            ;; curly braces, or parens it works best for it to almost be
+            ;; considered its own block, though it does not work if it is
+            ;; on its own as a single expression....
+            ((js-align--arrow-indentation))
+            ((or (js-align--continued-expression-p))
+             (progn
+               (+ js-indent-level js-expr-indent-offset)))
             (t 0))))
 #+end_src
 
@@ -360,7 +514,7 @@ variables from ~js.el~
 - Removed support for [[http://sweetjs.org/][macros]] and [[https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Array_comprehensions][array comprehensions]]. I plan to create
   hooks to include support for these and any other features which are
   not standard JavaScript.
-- A have added basic support for indenting the explicit return 
+- A have added basic support for indenting the explicit return
   expression of arrow functions over multiple lines. There are still
   some issues, though I plan to continue weeding them out.
 - For now I have disabled the multi line declaration indention. At the
