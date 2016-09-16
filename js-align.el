@@ -9,7 +9,7 @@
 
 ;; Maintainer: John Hooks <john@bitmachina.com>
 ;; URL: https://github.com/johnhooks/js-align
-;; Version: 0.1.2
+;; Version: 0.1.3
 
 ;; Keywords: languages, javascript
 
@@ -145,76 +145,9 @@ the question mark operator or nil if not a ternary colon."
   "Return indentation of a multi line arrow function explicit return."
   (save-excursion
     (back-to-indentation)
-    (when (save-excursion
-            (and (not (eq (point-at-bol) (point-min)))
-                 (not (looking-at "[{]"))
-                 (js--re-search-backward "[[:graph:]]" nil t)
-                 (progn
-                   ;; necessary to `forward-char' in order to move off
-                   ;; the match to [:graph:]
-                   (or (eobp) (forward-char))
-                   ;; skip over syntax whitespace
-                   (skip-syntax-backward " ")
-                   ;; skip over syntax punctuation
-                   (skip-syntax-backward ".")
-                   ;; Looking at a fat arrow?
-                   (looking-at "=>"))))
-      ;; if looking at a fat arrow, move to the saved match location
-      (goto-char (match-beginning 0))
-      ;; return the indentation
-      (+ (current-indentation) js-indent-level))))
-
-(defun js-align--backward-jump (&optional start)
-  "Move backward one token, jumping over delimiter pairs.
-Returns an alist of data representing the token. Optionally START at
-a position other than point."
-  ;; alist keys include the following:
-  ;;   end  - the position of the last char of the token or the
-  ;;          position after the closing delimiter char
-  ;;   type - the type of token
-  ;;
-  ;; Should not have to worry about beginning a search from inside a
-  ;; string or comment because `js-align--proper-indentation' will
-  ;; handle this situation. Otherwise `backward-sexp' will possibly
-  ;; jump unmatched pairs of strings and delimiters.
-  (when start (goto-char start))
-  ;; move backwards skipping comments and whitespace
-  (forward-comment most-negative-fixnum)
-  (when (not (eq (point) (point-min)))
-    (let (type
-          (char (char-before))
-          (end (point)))
-      (cond ((eq (char-syntax char) 46) ; 46 punctuation character "."
-             (skip-syntax-backward ".")
-             (setq type 'operator))
-            ((or (eq (char-syntax char) 95)   ; 95 symbol constituent "_"
-                 (eq (char-syntax char) 119)) ; 119 word constituent "w"
-             (skip-syntax-backward "w_")
-             (let ((on (char-after)))
-               (if (and (> on 47) (< on 58))  ; ansi number codes
-                   (setq type 'number)
-                 (setq type 'symbol))))
-            ((eq (char-syntax char) 41) ; 41 close delimiter character ")"
-             (backward-sexp)
-             (setq type 'close))
-            ((eq (char-syntax char) 40) ; 40 open delimiter character "("
-             (backward-char)
-             (setq type 'open))
-            ((eq (char-syntax char) 34) ; 34 string quote character "\""
-             (backward-sexp)
-             (setq type 'string)))
-      ;; Create alist of token data
-      `((end ,end) (type ,type)))))
-
-(defun js-align--backward-peek ()
-  "Move backward one token. Returns an alist representing the token."
-  ;; Adds following keys to alist returned by `js-align--backward-jump'
-  ;; start - the position of the beginning of the token
-  ;;         may be redundant.
-  (save-excursion
-    (let ((data (js-align--backward-jump)))
-      (unless (null data)
-        (append data `((start ,(point))))))))
+    (and (js-align--backward-operator)
+         (looking-at "=>")
+         (+ (current-indentation) js-indent-level))))
 
 ;; This is base on the code `js--proper-indentation' from `js.el'.
 (defun js-align--proper-indentation (parse-status)
