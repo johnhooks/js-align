@@ -16,7 +16,12 @@
    
    #+begin_src emacs-lisp :tangle no
      (require 'js-align)
+     (js-align-activate)
    #+end_src
+
+   Both ~js-align-activate~ and ~js-align-deactivate~ are interactive
+   as to allow easily comparison between the indentation of ~js-align~
+   and original code from ~js.el~.
 
 ** The Code
 
