@@ -87,6 +87,14 @@
   |   unchanged`"
   :keep-indent t)
 
+
+(js-align-deftest-indent default-keyword-as-property
+  "var foo = {
+  |  case: 'not in switch',
+  |  default: 'should indent like property'
+  |}"
+  :bind ((js-switch-indent-offset 0)))
+
 (js-align-deftest-indent case-inside-switch
   "switch (true) {
   |case 'true':
@@ -102,5 +110,13 @@
   |    return false
   |  default:
   |    return true
+  |}"
+  :bind ((js-switch-indent-offset 2)))
+
+(js-align-deftest-indent case-inside-switch-with-extra-indent-curly-after-newline
+  "switch (true)
+  |{
+  |  case 'true':
+  |    return false
   |}"
   :bind ((js-switch-indent-offset 2)))

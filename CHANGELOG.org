@@ -1,13 +1,43 @@
 #+TITLE:  CHANGELOG
 #+AUTHOR: John Hooks
 #+EMAIL:  john@bitmachina.com
-#+DATE:   <2016-09-16 Fri>
+#+DATE:   <2016-09-17 Sat>
 #+STARTUP: indent
 #+STARTUP: hidestars
 
-** 0.1.3
-<2016-09-16 Fri>
+** 0.1.4 <2016-09-17 Sat>
+*** Added
+1. =js-align--backward-token=
 
+   Used to move backward one token. When provided a non-nil first
+   argument, the function will jump over any pairs of parens, curly
+   and square braces to the the opening punctuation. Returns a
+   symbol representing the type of token passed over.
+
+2. =configure.el=
+
+   Used in the ~Makefile~ to configure the Emacs environment before
+   ~org-babel-tangle~ in order to use a newer Org mode version than
+   ships with Emacs.
+
+*** Modified
+1. =js-align--proper-indention=
+
+   Now using ~js-align--backward-token~ to find the ~switch~ keyword
+   when indenting inside switch statements. The previous code did not
+   catch the situation when the opening curly brace that follows the
+   ~switch~ keyword was not on the same line.
+
+2. =tests/indent.el= 
+
+   Added test for switch statements with opening curly braces on the
+   line below the ~switch~ keyword.
+
+3. =Makefile=
+
+   Now using Org mode version 8.3.6 to tangle ~js-align.org~.
+
+** 0.1.3 <2016-09-16 Fri>
 *** Modified
 1. js-align--arrow-indentation
 
@@ -21,9 +51,7 @@ commit. Still working on those...
 
 2. =js-align--backward-peek= 
 
-** 0.1.2
-<2016-09-16 Fri>
-   
+** 0.1.2 <2016-09-16 Fri>
 *** Added
     1. ~js-align--backward-operator~
 

@@ -2,12 +2,22 @@
 
 EMACS = emacs
 
+# Add the newer Org mode to the load path.
+TANGLEFLAGS = --batch -l configure.el $^
+
 # Compile with noninteractive and relatively clean environment.
 BATCHFLAGS = -batch -Q
 
-SRCS = js-align.el
+ORGS = js-align.org
+
+SRCS = $(ORGS:.org=.el)
 
 OBJS = $(SRCS:.el=.elc)
+
+%.el: %.org
+	${EMACS} ${TANGLEFLAGS} -f org-babel-tangle
+
+#--eval '(org-babel-tangle "$^")'
 
 %.elc: %.el
 	${EMACS} $(BATCHFLAGS) -L . -f batch-byte-compile $^

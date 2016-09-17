@@ -9,7 +9,7 @@
 
 ;; Maintainer: John Hooks <john@bitmachina.com>
 ;; URL: https://github.com/johnhooks/js-align
-;; Version: 0.1.3
+;; Version: 0.1.4
 
 ;; Keywords: languages, javascript
 
@@ -58,6 +58,44 @@
 
 (defvar js-align--no-indent-operator-re
   "[-+*][-+/]\\|[/*]/")
+
+(defun js-align--backward-token (&optional jump)
+  "Move backward one token.
+Returns a symbol representing the type of token or nil if there is not
+a token before point. If JUMP is non-nil, matched sets of parens, curly
+and square braces will be jumped over to the opening punctuation."
+
+  ;; Should not have to worry about beginning search from inside a
+  ;; string or comment because `js-align--proper-indentation' will
+  ;; handle this situation. Otherwise `backward-sexp' will possibly
+  ;; jump unmatched pairs.
+
+  ;; move backwards skipping comments and whitespace
+  (forward-comment most-negative-fixnum)
+  (when (not (eq (point) (point-min)))
+    (let ((syntax-code (char-syntax (char-before)))
+          (end (point)))
+      (cond ((memq syntax-code '(95 119)) ; 95 symbol constituent "_"
+             (skip-syntax-backward "w_")  ; 119 word constituent "w"
+             (let ((on (char-after)))
+               (if (and (> on 47) (< on 58))  ; ansi number codes
+                   'number
+                 'symbol)))
+            ((eq syntax-code 46) ; 46 punctuation character "."
+             (skip-syntax-backward ".")
+             'operator)
+            ((eq syntax-code 41) ; 41 close delimiter character ")"
+             (if jump
+                 (backward-sexp)
+               (backward-char))
+             'close)
+            ((eq syntax-code 40) ; 40 open delimiter character "("
+             (backward-char)
+             'open)
+            ((eq syntax-code 34) ; 34 string quote character "\""
+             (backward-sexp)
+             'string)
+            (t nil)))))
 
 (defun js-align--backward-operator ()
   "Move point to the beginning of the previous token if an operator.
@@ -173,9 +211,7 @@ the question mark operator or nil if not a ternary colon."
                  (progn
                    ;; nothing following the opening paren/bracket
                    ;; except maybe a fat arrow
-                   (skip-syntax-backward " ")
-                   ;; Is this to walk back across an argument list?
-                   (when (eq (char-before) ?\)) (backward-list))
+                   (js-align--backward-token t)
                    (back-to-indentation)
                    ;; (js--maybe-goto-declaration-keyword-end) ; disabled
                    (let* ((in-switch-p (unless same-indent-p
@@ -219,8 +255,18 @@ the question mark operator or nil if not a ternary colon."
              (+ js-indent-level js-expr-indent-offset)))
           (t 0))))
 
-;; Add the addvice to `js-mode' to replace the indentation function
-(advice-add #'js--proper-indentation :override #'js-align--proper-indentation)
+(defun js-align-activate ()
+  (interactive)
+  ;; Add the advice to `js-mode' to replace the indentation function
+  (advice-add 'js--proper-indentation
+              :override
+              #'js-align--proper-indentation))
+
+(defun js-align-deactive ()
+  (interactive)
+  ;; Remove the advice from `js-mode' to restore original function
+  (advice-remove 'js--proper-indentation
+                 #'js-align--proper-indentation))
 
 (provide 'js-align)
 ;;; js-align.el ends here
