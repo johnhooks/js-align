@@ -45,30 +45,53 @@
                    bind)
        (js-align-test-indent ,content ,keep-indent))))
 
-(js-align-deftest-indent multi-line-arrow-declare
-  "let foo = (x) =>
-  |  x * x")
+(js-align-deftest-indent continued-expr-above
+  "let foo = bar +
+  |  baz")
 
-(js-align-deftest-indent multi-line-arrow-in-args
-  "foo((x) =>
-  |  x * x
-  |)")
+(js-align-deftest-indent continued-expr-above-comment-a
+  "let foo = bar + // Beware the Jabberwock, my son!
+  |  baz")
 
-(js-align-deftest-indent continued-expression-above
-  "let foo = 5 +
-  |  4")
+(js-align-deftest-indent continued-expr-above-comment-b
+  "let foo = bar + /* The jaws that bite, the claws that catch! */
+  |  baz")
 
-(js-align-deftest-indent continued-expression-above-comment
-  "let foo = 5 + // 9
-  |  4")
-
-(js-align-deftest-indent continued-expression-below
+(js-align-deftest-indent continued-expr-below
   "let foo = 5
   |  + 4")
 
-(js-align-deftest-indent continued-expression-below-comment
-  "let foo = 5 // 9
-  |  + 4")
+(js-align-deftest-indent continued-expr-below-comment-a
+  "let foo = bar // Beware the Jubjub bird, and shun
+  |  + baz")
+
+(js-align-deftest-indent continued-expr-below-comment-b
+  "let foo = bar /* The frumious Bandersnatch! */
+  |  + baz")
+
+(js-align-deftest-indent multi-line-arrow-declare
+  "let foo = (bar) =>
+  |  bar + bar")
+
+(js-align-deftest-indent multi-line-arrow-in-args
+  "foo((bar) =>
+  |  bar + bar
+  |)")
+
+(js-align-deftest-indent continued-expr-sub-chain
+  "let foo = (bar) =>
+  |  bar
+  |    .baz()")
+
+(js-align-deftest-indent continued-expr-sub-chain-comment-a
+  "let foo = (bar) =>
+  |  bar // He took his vorpal sword in hand:
+  |    .baz()")
+
+(js-align-deftest-indent continued-expr-sub-chain-comment-b
+  "let foo = (bar) =>
+  |  bar /* Long time the manxome foe he sought -- */
+  |    .baz()")
 
 (js-align-deftest-indent ternary-expr-basic
   "let foo = (true)
@@ -80,13 +103,21 @@
   |  ? {a: 2, b: b}
   |  : {a: a, b: 3}")
 
+(js-align-deftest-indent ternary-expr-double-deep
+  "let brillig = (slithy || toves)
+  |  ? (gyre && gimble)
+  |    ? wabe
+  |    : mimsy
+  |  : (borogoves())
+  |    ? mome
+  |    : raths")
+
 (js-align-deftest-indent multi-line-strings-noop
   "`multiline strings
   |        contents
   |     are kept
   |   unchanged`"
   :keep-indent t)
-
 
 (js-align-deftest-indent default-keyword-as-property
   "var foo = {

@@ -18,22 +18,19 @@ explaination of my solution.
 #+end_src
 
 ** License
-Some of this code is based on ~js.el~. I believe I have properly
-included it in the license, though in addition I will also make note
-of where code is heavily barrowed. I am unsure of whether the FSF
+Some of this code is based on ~js.el~. I will make note of where
+code is heavily barrowed. I am unsure of whether the FSF
 copyright should be included, though what could it hurt?
 
 #+begin_src emacs-lisp :tangle yes
   ;; Copyright (C) 2016 John Hooks
   ;; Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
-  ;; Author: Karl Landstrom <karl.landstrom@brgeight.se>
-  ;;         Daniel Colascione <dan.colascione@gmail.com>
-  ;;         John Hooks <john@bitmachina.com>
+  ;; Author: John Hooks <john@bitmachina.com>
 
   ;; Maintainer: John Hooks <john@bitmachina.com>
   ;; URL: https://github.com/johnhooks/js-align
-  ;; Version: 0.1.4
+  ;; Version: 0.1.5
 
   ;; Keywords: languages, javascript
 
@@ -148,6 +145,23 @@ Used by ~js-align--looking-at-indent-operator-p~
     "[-+*][-+/]\\|[/*]/")
 #+end_src
 
+** Syntax Predicates
+*** =js-align--word-or-symbol-p=
+
+Determine if the argument CHAR is a /word/ or /symbol/ as defined in
+the syntax table of ~js-mode~.
+
+ECMAScript identifier name.
+
+#+NAME: js-align--word-or-symbol-p
+#+begin_src emacs-lisp :tangle yes
+  (defun js-align--word-or-symbol-p (char)
+    ;; 95 symbol constituent "_"
+    ;; 119 word constituent "w"
+    (or (eq (char-syntax char) 95)
+        (eq (char-syntax char) 119)))
+#+end_src
+
 ** Functions
 *** =js-align--backward-token=
 
@@ -218,6 +232,44 @@ inside a comment or string, the Parser State returned from
 =syntax-ppss= can be use to detect these conditions. Though once
 initiated from outside a comment or string it should successfully
 continue to skip over both until reaching the beginning of the buffer.
+
+*** =js-align--beginning-of-call=
+
+#+NAME: js-align--beginning-of-call
+#+begin_src emacs-lisp :tangle yes
+  (defun js-align--beginning-of-call ()
+    "Move point to the beginning of a function call.
+  This function walks the method chain if necessary. Moves point to the
+  beginning of the function call or the object on which the method chain
+  begun and return non-nil. If an anomaly is encountered, return nil and
+  leave point at the original position.  Needs to be called from outside
+  the argument list."
+    (let (pos
+          (looking t)
+          (beginning (point)))
+      (while looking
+        (forward-comment most-negative-fixnum)
+        (if (not (eq (point) (point-min)))
+            (progn
+              (when (eq (char-before) ?\))
+                (backward-list))           ; jump argument list
+              (when (js-align--word-or-symbol-p (char-before))
+                (skip-syntax-backward "w_")
+                (and (looking-at js--name-start-re)
+                     (setq looking nil)))  ; maybe found it?
+              (cond ((eq (char-before) ?.) ; member operator
+                     (setq looking t)      ; nope didn't fine it
+                     (backward-char))
+                    ((null looking)
+                     (setq pos (point)))   ; found it!
+                    (t
+                     (setq looking nil)))) ; failure, exit loop
+          (setq looking nil)))             ; hit bob, exit loop
+      (if pos
+          t
+        (progn (goto-char beginning)
+               nil))))
+#+end_src
 
 *** =js-align--ternary-search=
 Used by ~js-align--ternary-search-p~
@@ -298,10 +350,15 @@ Used by ~js-align--continued-expression-p~
     "Return non-nil if point is on a JavaScript operator requiring indentation."
     (save-match-data
       (and (looking-at js-align--indent-operator-re)
-           ;; fail on a colon if used outside a ternary expression
+           ;; Fail on a colon if used outside a ternary expression.
            (or (not (eq (char-after) ?:))
                (js-align--ternary-search))
-           ;; looking back to catch ++ -- /* */ =>
+           ;; Catch forward slash in regular expression rather than division.
+           (not (and
+                 (eq (char-after) ?/)
+                 (save-excursion
+                   (eq (nth 3 (syntax-ppss)) ?/))))
+           ;; Looking back to catch ++ -- /* */ =>
            (or (not (memq (char-before) '(?- ?+ ?* ?/ ?=)))
                (save-excursion
                  (backward-char)
@@ -411,12 +468,18 @@ variables from ~js.el~
             ((nth 3 parse-status) 0) ; inside string
             ((js--ctrl-statement-indentation))
             ;; ((js--multi-line-declaration-indentation)) ; disabled
+            ((and (eq (char-after) ?.)
+                  (js-align--beginning-of-call)
+                  (progn
+                    (back-to-indentation)
+                    (+ (current-column) js-indent-level
+                       js-expr-indent-offset))))
+            ((js-align--arrow-indentation))
             ((nth 1 parse-status)
              ;; A single closing paren/bracket should be indented at the
              ;; same level as the opening statement. Same goes for
              ;; "case" and "default".
-             (let (
-                   (same-indent-p (looking-at "[]})]"))
+             (let ((same-indent-p (looking-at "[]})]"))
                    (switch-keyword-p (looking-at "default\\_>\\|case\\_>[^:]"))
                    (continued-expr-p (js-align--continued-expression-p)))
                (goto-char (nth 1 parse-status)) ;go to the opening char
@@ -463,7 +526,6 @@ variables from ~js.el~
             ;; curly braces, or parens it works best for it to almost be
             ;; considered its own block, though it does not work if it is
             ;; on its own as a single expression....
-            ((js-align--arrow-indentation))
             ((or (js-align--continued-expression-p))
              (progn
                (+ js-indent-level js-expr-indent-offset)))

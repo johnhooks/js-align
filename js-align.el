@@ -59,6 +59,12 @@
 (defvar js-align--no-indent-operator-re
   "[-+*][-+/]\\|[/*]/")
 
+(defun js-align--word-or-symbol-p (char)
+  ;; 95 symbol constituent "_"
+  ;; 119 word constituent "w"
+  (or (eq (char-syntax char) 95)
+      (eq (char-syntax char) 119)))
+
 (defun js-align--backward-token (&optional jump)
   "Move backward one token.
 Returns a symbol representing the type of token or nil if there is not
@@ -109,6 +115,39 @@ Return non-nil if success."
         (progn (goto-char beginning)
                nil)))))
 
+(defun js-align--beginning-of-call ()
+  "Move point to the beginning of a function call.
+This function walks the method chain if necessary. Moves point to the
+beginning of the function call or the object on which the method chain
+begun and return non-nil. If an anomaly is encountered, return nil and
+leave point at the original position.  Needs to be called from outside
+the argument list."
+  (let (pos
+        (looking t)
+        (beginning (point)))
+    (while looking
+      (forward-comment most-negative-fixnum)
+      (if (not (eq (point) (point-min)))
+          (progn
+            (when (eq (char-before) ?\))
+              (backward-list))           ; jump argument list
+            (when (js-align--word-or-symbol-p (char-before))
+              (skip-syntax-backward "w_")
+              (and (looking-at js--name-start-re)
+                   (setq looking nil)))  ; maybe found it?
+            (cond ((eq (char-before) ?.) ; member operator
+                   (setq looking t)      ; nope didn't fine it
+                   (backward-char))
+                  ((null looking)
+                   (setq pos (point)))   ; found it!
+                  (t
+                   (setq looking nil)))) ; failure, exit loop
+        (setq looking nil)))             ; hit bob, exit loop
+    (if pos
+        t
+      (progn (goto-char beginning)
+             nil))))
+
 (defun js-align--ternary-search ()
   "Search backwards for the matched question mark of a ternary colon.
 Skips over any subexpression ternary pairs. Returns the position of
@@ -144,10 +183,15 @@ the question mark operator or nil if not a ternary colon."
   "Return non-nil if point is on a JavaScript operator requiring indentation."
   (save-match-data
     (and (looking-at js-align--indent-operator-re)
-         ;; fail on a colon if used outside a ternary expression
+         ;; Fail on a colon if used outside a ternary expression.
          (or (not (eq (char-after) ?:))
              (js-align--ternary-search))
-         ;; looking back to catch ++ -- /* */ =>
+         ;; Catch forward slash in regular expression rather than division.
+         (not (and
+               (eq (char-after) ?/)
+               (save-excursion
+                 (eq (nth 3 (syntax-ppss)) ?/))))
+         ;; Looking back to catch ++ -- /* */ =>
          (or (not (memq (char-before) '(?- ?+ ?* ?/ ?=)))
              (save-excursion
                (backward-char)
@@ -197,12 +241,18 @@ the question mark operator or nil if not a ternary colon."
           ((nth 3 parse-status) 0) ; inside string
           ((js--ctrl-statement-indentation))
           ;; ((js--multi-line-declaration-indentation)) ; disabled
+          ((and (eq (char-after) ?.)
+                (js-align--beginning-of-call)
+                (progn
+                  (back-to-indentation)
+                  (+ (current-column) js-indent-level
+                     js-expr-indent-offset))))
+          ((js-align--arrow-indentation))
           ((nth 1 parse-status)
            ;; A single closing paren/bracket should be indented at the
            ;; same level as the opening statement. Same goes for
            ;; "case" and "default".
-           (let (
-                 (same-indent-p (looking-at "[]})]"))
+           (let ((same-indent-p (looking-at "[]})]"))
                  (switch-keyword-p (looking-at "default\\_>\\|case\\_>[^:]"))
                  (continued-expr-p (js-align--continued-expression-p)))
              (goto-char (nth 1 parse-status)) ;go to the opening char
@@ -249,7 +299,6 @@ the question mark operator or nil if not a ternary colon."
           ;; curly braces, or parens it works best for it to almost be
           ;; considered its own block, though it does not work if it is
           ;; on its own as a single expression....
-          ((js-align--arrow-indentation))
           ((or (js-align--continued-expression-p))
            (progn
              (+ js-indent-level js-expr-indent-offset)))
