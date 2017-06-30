@@ -5,7 +5,9 @@
 #+STARTUP: indent
 #+STARTUP: hidestars
 
-** 0.1.6 <2017-06-30 Fri>
+** 0.2.0 <2017-06-30 Fri>
+Important Note: =js-align-mode= is now implemented as a minor mode.
+=js-align-activate= and =js-align-deactivate= have been removed.
 *** Added
 1. =js-align-mode=
    Allow use a minor mode.

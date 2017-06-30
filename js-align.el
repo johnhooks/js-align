@@ -8,7 +8,7 @@
 
 ;; Maintainer: John Hooks <john@bitmachina.com>
 ;; URL: https://github.com/johnhooks/js-align
-;; Version: 0.1.6
+;; Version: 0.2.0
 
 ;; Keywords: languages, javascript
 
@@ -338,7 +338,7 @@ the question mark operator or nil if not a ternary colon."
 
 (define-minor-mode js-align-mode
   "Minor mode for improved JavaScript indentation."
-  :lighter "align"
+  :lighter " align"
   :group js-align-mode
   (if js-align-mode
       (js-align-mode-enter)

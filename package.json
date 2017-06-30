@@ -1,6 +1,6 @@
 {
   "name": "js-align-mode",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "An Emacs JavaScript Indendtation Mode",
   "main": "bin/build-identifier.js",
   "scripts": {
