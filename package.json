@@ -1,0 +1,22 @@
+{
+  "name": "js-align-mode",
+  "version": "0.1.6",
+  "description": "An Emacs JavaScript Indendtation Mode",
+  "main": "bin/build-identifier.js",
+  "scripts": {
+    "build": "node bin/build-identifier.js > js-align-identifier.el"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnhooks/js-align.git"
+  },
+  "author": "John Hooks",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/johnhooks/js-align/issues"
+  },
+  "homepage": "https://github.com/johnhooks/js-align#readme",
+  "dependencies": {
+    "unicode-9.0.0": "^0.7.4"
+  }
+}

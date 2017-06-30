@@ -1,6 +1,7 @@
 # -*- Makefile -*-
 
-EMACS = emacs
+# Using Emacs from emacsformacosx.com
+EMACS = /Applications/Emacs.app/Contents/MacOS/Emacs
 
 # Add the newer Org mode to the load path.
 TANGLEFLAGS = --batch -l configure.el $^
@@ -10,7 +11,7 @@ BATCHFLAGS = -batch -Q
 
 ORGS = js-align.org
 
-SRCS = $(ORGS:.org=.el)
+SRCS = $(ORGS:.org=.el) js-align-polyfill.el js-align-identifier.el 
 
 OBJS = $(SRCS:.el=.elc)
 

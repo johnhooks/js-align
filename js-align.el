@@ -1,15 +1,14 @@
+
 ;;; js-align.el --- JavaScript Indentation
 
 ;; Copyright (C) 2016 John Hooks
-;; Copyright (C) 2008-2016 Free Software Foundation, Inc.
+;; Copyright (C) 2008-2017 Free Software Foundation, Inc.
 
-;; Author: Karl Landstrom <karl.landstrom@brgeight.se>
-;;         Daniel Colascione <dan.colascione@gmail.com>
-;;         John Hooks <john@bitmachina.com>
+;; Author: John Hooks <john@bitmachina.com>
 
 ;; Maintainer: John Hooks <john@bitmachina.com>
 ;; URL: https://github.com/johnhooks/js-align
-;; Version: 0.1.4
+;; Version: 0.1.6
 
 ;; Keywords: languages, javascript
 
@@ -37,13 +36,36 @@
 ;; indentation in a flexible and easy to reason about way.
 
 ;; General Remarks:
-;;
+
 ;; Exported names start with "js-align"; private names start with
 ;; "js-align--".
 
 ;;; Code:
 
 (require 'js)
+(require 'js-align-identifier)
+(require 'js-align-polyfill)
+
+(defgroup js-align-mode nil
+  "Improved JavaScript Indenation."
+  :group 'languages)
+
+(defvar js-align--syntax-table
+  (let ((table (make-syntax-table)))
+    (c-populate-syntax-table table)
+    (modify-syntax-entry ?+ "." table)
+    (modify-syntax-entry ?$ "w" table)
+    (modify-syntax-entry ?_ "w" table)
+    (modify-syntax-entry ?` "\"" table)
+    (modify-syntax-entry '(?0 . ?9) "_" table)
+    (dolist (char js-align-syntax-word-chars)
+      (modify-syntax-entry char "w" table))
+    (dolist (char js-align-syntax-symbol-chars)
+      (modify-syntax-entry char "_" table))
+    table)
+  "Syntax table for `js-align-mode'.
+The word syntax class is used for JavaScript Identifier start characters,
+and the symbol syntax class is used for Identifier part characters ")
 
 (defvar js-align--empty-re "\\s-*\\($\\|/[/*]\\|//\\)")
 
@@ -304,18 +326,30 @@ the question mark operator or nil if not a ternary colon."
              (+ js-indent-level js-expr-indent-offset)))
           (t 0))))
 
-(defun js-align-activate ()
-  (interactive)
-  ;; Add the advice to `js-mode' to replace the indentation function
+(define-minor-mode js-align-mode
+  "Minor mode for improved JavaScript indentation."
+  :group js-align-mode
+  (if js-align-mode
+      (js-align-mode-enter)
+    (js-align-mode-exit)))
+
+(defun js-align-mode-enter ()
+  "Initialization for `js-align-mode'."
+  ;; Add The advice to `js-mode' to replace the indentation function
   (advice-add 'js--proper-indentation
               :override
-              #'js-align--proper-indentation))
+              #'js-align--proper-indentation)
+  (advice-add 'js-syntax-propertize
+              :override
+              #'--js-syntax-propertize))
 
-(defun js-align-deactive ()
-  (interactive)
+(defun js-align-mode-exit ()
+  "Turn off `js-align-mode'."
   ;; Remove the advice from `js-mode' to restore original function
   (advice-remove 'js--proper-indentation
-                 #'js-align--proper-indentation))
+                 #'js-align--proper-indentation)
+  (advice-remove 'js-syntax-propertize
+                 #'--js-syntax-propertize))
 
 (provide 'js-align)
 ;;; js-align.el ends here
