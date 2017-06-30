@@ -1,9 +1,22 @@
 #+TITLE:  CHANGELOG
 #+AUTHOR: John Hooks
 #+EMAIL:  john@bitmachina.com
-#+DATE:   <2016-09-17 Sat>
+#+DATE:   <2017-06-30 Fri>
 #+STARTUP: indent
 #+STARTUP: hidestars
+
+** 0.1.6 <2017-06-30 Fri>
+*** Added
+1. =js-align-mode=
+   Allow use a minor mode.
+2. =js-align-mode-enter=
+   Set buffer local =indent-line-function= and
+   =syntax-propertize-function=.
+3. =js-align-mode-exit=
+   Set buffer local variables back to those of =js-mode=.
+4. =js-align--syntax-table=
+   Not in use yet. Though hopefully can be used to improve the
+   parsing of identifiers.
 
 ** 0.1.5 <2017-03-12 Sun>
 *** Added

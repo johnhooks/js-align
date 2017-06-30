@@ -91,6 +91,6 @@
    necessary functionality without rewriting the original code, I
    realized there where so many interconnected conditions the advice
    had to be almost as long and the original code. So I have choosen
-   to rewrite the functions and replace them using the ~:override~
-   argument to ~add-advice~. I consider this a short term measure, I
-   am sure there is a better solution.
+   to do a complete rewrite and replace the original function
+   =js-indent-line= with =js-align-indent-line= through the use of a
+   minor mode.

@@ -572,6 +572,9 @@ variables from ~js.el~
   expressions, which ends up at minimum being 6 spaces.
 
 *** =js-align-indent-line=
+This function is a copy of =js-indent-line=. It's purpose is to
+replace the default =indent-line-function= of the buffer in which
+=js-align-mode= is activated.
 #+NAME: js-align-indent-line
 #+begin_src emacs-lisp :tangle yes
   (defun js-align-indent-line ()
@@ -596,7 +599,7 @@ I hope you have found this helpful.
 #+begin_src emacs-lisp :tangle yes
     (define-minor-mode js-align-mode
       "Minor mode for improved JavaScript indentation."
-      :lighter "align"
+      :lighter " align"
       :group js-align-mode
       (if js-align-mode
           (js-align-mode-enter)
