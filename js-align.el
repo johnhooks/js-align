@@ -328,6 +328,7 @@ the question mark operator or nil if not a ternary colon."
 
 (define-minor-mode js-align-mode
   "Minor mode for improved JavaScript indentation."
+  :lighter "align"
   :group js-align-mode
   (if js-align-mode
       (js-align-mode-enter)

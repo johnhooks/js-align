@@ -1,7 +1,7 @@
 #+TITLE:  js-align.org
 #+AUTHOR: John Hooks
 #+EMAIL:  john@bitmachina.com
-#+DATE:   <2016-09-17 Sat>
+#+DATE:   <2017-06-30 Fri>
 #+STARTUP: indent
 #+STARTUP: hidestars
 ** Purpose
@@ -583,6 +583,7 @@ I hope you have found this helpful.
 #+begin_src emacs-lisp :tangle yes
   (define-minor-mode js-align-mode
     "Minor mode for improved JavaScript indentation."
+    :lighter "align"
     :group js-align-mode
     (if js-align-mode
         (js-align-mode-enter)

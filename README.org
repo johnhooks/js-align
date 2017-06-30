@@ -1,7 +1,7 @@
 #+TITLE:  Emacs JavaScript Align
 #+AUTHOR: John Hooks
 #+EMAIL:  john@bitmachina.com
-#+DATE:   <2016-09-07 Wed>
+#+DATE:   <2017-06-30 Fri>
 
 ** Purpose
 
@@ -13,15 +13,13 @@
    Add ~js-align.el~ to your ~load-path~, and then add the following
    code to your Emacs configuration to replace the indentation function
    of ~js.el~ with that if ~js-align.el~
-   
+
    #+begin_src emacs-lisp :tangle no
      (require 'js-align)
-     (js-align-activate)
+     (add-hook 'js-mode 'js-align-mode)
    #+end_src
 
-   Both ~js-align-activate~ and ~js-align-deactivate~ are interactive
-   as to allow easily comparison between the indentation of ~js-align~
-   and original code from ~js.el~.
+   The mode can be toggled by calling ~js-align-mode~ interactively.
 
 ** The Code
 
@@ -43,7 +41,7 @@
    other than to hit ~<TAB>~. Though over the last few months I have
    begun to play with functional reactive programming. Many libraries
    heavily utilize the new ES6 arrow function and its explicit reaturn
-   value. Attempting to indent an arrow function as done with an 
+   value. Attempting to indent an arrow function as done with an
    anonymous function currently produces odd results.
 
    #+BEGIN_SRC javascript :tangle no
