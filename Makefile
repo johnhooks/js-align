@@ -23,7 +23,9 @@ OBJS = $(SRCS:.el=.elc)
 %.elc: %.el
 	${EMACS} $(BATCHFLAGS) -L . -f batch-byte-compile $^
 
-all: $(OBJS)
+all: $(SRCS)
+
+compile: $(OBJS)
 
 clean:
 	-rm -f $(OBJS)

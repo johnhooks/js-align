@@ -326,6 +326,16 @@ the question mark operator or nil if not a ternary colon."
              (+ js-indent-level js-expr-indent-offset)))
           (t 0))))
 
+(defun js-align-indent-line ()
+  "Indent the current line as JavaScript."
+  (interactive)
+  (let* ((parse-status
+          (save-excursion (syntax-ppss (point-at-bol))))
+         (offset (- (point) (save-excursion (back-to-indentation) (point)))))
+    (unless (nth 3 parse-status)
+      (indent-line-to (js-align--proper-indentation parse-status))
+      (when (> offset 0) (forward-char offset)))))
+
 (define-minor-mode js-align-mode
   "Minor mode for improved JavaScript indentation."
   :lighter "align"
@@ -337,20 +347,14 @@ the question mark operator or nil if not a ternary colon."
 (defun js-align-mode-enter ()
   "Initialization for `js-align-mode'."
   ;; Add The advice to `js-mode' to replace the indentation function
-  (advice-add 'js--proper-indentation
-              :override
-              #'js-align--proper-indentation)
-  (advice-add 'js-syntax-propertize
-              :override
-              #'--js-syntax-propertize))
+  (setq-local indent-line-function #'js-align-indent-line)
+  (setq-local syntax-propertize-function #'--js-syntax-propertize))
 
 (defun js-align-mode-exit ()
   "Turn off `js-align-mode'."
   ;; Remove the advice from `js-mode' to restore original function
-  (advice-remove 'js--proper-indentation
-                 #'js-align--proper-indentation)
-  (advice-remove 'js-syntax-propertize
-                 #'--js-syntax-propertize))
+  (setq-local indent-line-function #'js-indent-line)
+  (setq-local syntax-propertize-function #'js-syntax-propertize))
 
 (provide 'js-align)
 ;;; js-align.el ends here

@@ -571,6 +571,19 @@ variables from ~js.el~
   as a variable's  declaration keyword, plus the offset of continued
   expressions, which ends up at minimum being 6 spaces.
 
+*** =js-align-indent-line=
+#+NAME: js-align-indent-line
+#+begin_src emacs-lisp :tangle yes
+  (defun js-align-indent-line ()
+    "Indent the current line as JavaScript."
+    (interactive)
+    (let* ((parse-status
+            (save-excursion (syntax-ppss (point-at-bol))))
+           (offset (- (point) (save-excursion (back-to-indentation) (point)))))
+      (unless (nth 3 parse-status)
+        (indent-line-to (js-align--proper-indentation parse-status))
+        (when (> offset 0) (forward-char offset)))))
+#+end_src
 ** Goals
 - Create a group of tests.
 - Create a few well placed hooks for customization.
@@ -581,32 +594,26 @@ variables from ~js.el~
 I hope you have found this helpful.
 
 #+begin_src emacs-lisp :tangle yes
-  (define-minor-mode js-align-mode
-    "Minor mode for improved JavaScript indentation."
-    :lighter "align"
-    :group js-align-mode
-    (if js-align-mode
-        (js-align-mode-enter)
-      (js-align-mode-exit)))
+    (define-minor-mode js-align-mode
+      "Minor mode for improved JavaScript indentation."
+      :lighter "align"
+      :group js-align-mode
+      (if js-align-mode
+          (js-align-mode-enter)
+        (js-align-mode-exit)))
 
-  (defun js-align-mode-enter ()
-    "Initialization for `js-align-mode'."
-    ;; Add The advice to `js-mode' to replace the indentation function
-    (advice-add 'js--proper-indentation
-                :override
-                #'js-align--proper-indentation)
-    (advice-add 'js-syntax-propertize
-                :override
-                #'--js-syntax-propertize))
+    (defun js-align-mode-enter ()
+      "Initialization for `js-align-mode'."
+      ;; Add The advice to `js-mode' to replace the indentation function
+      (setq-local indent-line-function #'js-align-indent-line)
+      (setq-local syntax-propertize-function #'--js-syntax-propertize))
 
-  (defun js-align-mode-exit ()
-    "Turn off `js-align-mode'."
-    ;; Remove the advice from `js-mode' to restore original function
-    (advice-remove 'js--proper-indentation
-                   #'js-align--proper-indentation)
-    (advice-remove 'js-syntax-propertize
-                   #'--js-syntax-propertize))
+    (defun js-align-mode-exit ()
+      "Turn off `js-align-mode'."
+      ;; Remove the advice from `js-mode' to restore original function
+      (setq-local indent-line-function #'js-indent-line)
+      (setq-local syntax-propertize-function #'js-syntax-propertize))
 
-  (provide 'js-align)
-  ;;; js-align.el ends here
+    (provide 'js-align)
+    ;;; js-align.el ends here
 #+end_src
